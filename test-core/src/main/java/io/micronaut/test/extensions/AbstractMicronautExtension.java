@@ -37,6 +37,7 @@ import io.micronaut.runtime.context.scope.refresh.RefreshScope;
 import io.micronaut.test.annotation.AnnotationUtils;
 import io.micronaut.test.annotation.DirtiesContext;
 import io.micronaut.test.annotation.MicronautTestValue;
+import io.micronaut.test.annotation.MockBean;
 import io.micronaut.test.condition.TestActiveCondition;
 import io.micronaut.test.context.TestContext;
 import io.micronaut.test.context.TestExecutionListener;
@@ -44,6 +45,7 @@ import io.micronaut.test.support.TestPropertyProvider;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.AnnotatedElement;
 import java.util.*;
 
@@ -168,6 +170,9 @@ public abstract class AbstractMicronautExtension<C> implements TestExecutionList
                     .map(DirtiesContext.Timing::before)
                     .orElse(false);
 
+            // need to mock the beans if they are requested to be mocked
+            clearBefore = clearBefore || anyMockBeanAnnotations(testClass);
+
             if (clearBefore) {
                 clearContext();
             }
@@ -263,6 +268,13 @@ public abstract class AbstractMicronautExtension<C> implements TestExecutionList
         }
     }
 
+    private boolean anyMockBeanAnnotations(Class<?> testClass) {
+        return Arrays.stream(testClass.getMethods())
+                .map(AccessibleObject::getAnnotations)
+                .flatMap(Arrays::stream)
+                .anyMatch(MockBean.class::isInstance);
+    }
+
     private void copyContext(ApplicationContext src, ApplicationContext dest) {
         Environment srcEnv = src.getEnvironment();
         Environment destEnv = dest.getEnvironment();
@@ -342,6 +354,12 @@ public abstract class AbstractMicronautExtension<C> implements TestExecutionList
      * @param builtContext test context, from test framework to internal format
      */
     protected void afterClass(C context, TestContext builtContext) {
+        // auto clear after if mocked beans
+        if (anyMockBeanAnnotations(builtContext.getTestClass())) {
+            clearContext();
+            return;
+        }
+
         DirtiesContext dirtiesContext = builtContext.getTestClass().getAnnotation(DirtiesContext.class);
         if (dirtiesContext == null)
             return;
