@@ -58,8 +58,9 @@ class MicronautKotestContext(private val testClass: Class<Any>,
     }
 
     fun afterSpecClass(spec: Spec) {
-        afterTestClass(buildContext(spec))
-        afterClass(spec)
+        val builtContext = buildContext(spec);
+        afterTestClass(builtContext)
+        afterClass(spec, builtContext)
     }
 
     @Suppress("UNCHECKED_CAST")

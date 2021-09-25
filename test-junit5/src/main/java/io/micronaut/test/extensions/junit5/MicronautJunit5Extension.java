@@ -100,9 +100,10 @@ public class MicronautJunit5Extension extends AbstractMicronautExtension<Extensi
 
     @Override
     public void afterAll(ExtensionContext extensionContext) throws Exception {
-        afterTestClass(buildContext(extensionContext));
+        TestContext builtContext = buildContext(extensionContext);
+        afterTestClass(builtContext);
         if (!extensionContext.getTestClass().filter(this::isNestedTestClass).isPresent()) {
-            afterClass(extensionContext);
+            afterClass(extensionContext, builtContext);
         }
     }
 

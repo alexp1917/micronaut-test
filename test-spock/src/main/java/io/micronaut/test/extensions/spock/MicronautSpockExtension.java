@@ -113,8 +113,9 @@ public class MicronautSpockExtension<T extends Annotation> extends AbstractMicro
         );
 
         spec.addCleanupSpecInterceptor(invocation -> {
-            afterTestClass(buildContext(invocation, null));
-            afterClass(invocation);
+            TestContext builtContext = buildContext(invocation, null);
+            afterTestClass(builtContext);
+            afterClass(invocation, builtContext);
 
             invocation.proceed();
             singletonMocks.clear();

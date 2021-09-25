@@ -34,6 +34,7 @@ import io.micronaut.runtime.EmbeddedApplication;
 import io.micronaut.runtime.context.scope.refresh.RefreshEvent;
 import io.micronaut.runtime.context.scope.refresh.RefreshScope;
 import io.micronaut.test.annotation.AnnotationUtils;
+import io.micronaut.test.annotation.DirtiesContext;
 import io.micronaut.test.annotation.MicronautTestValue;
 import io.micronaut.test.condition.TestActiveCondition;
 import io.micronaut.test.context.TestContext;
@@ -63,7 +64,7 @@ public abstract class AbstractMicronautExtension<C> implements TestExecutionList
      */
     public static final String TEST_PROPERTY_SOURCE = "test-properties";
     private static Map<String, PropertySourceLoader> loaderMap;
-    protected ApplicationContext applicationContext;
+    protected static ApplicationContext applicationContext;
     protected EmbeddedApplication embeddedApplication;
     protected RefreshScope refreshScope;
     protected BeanDefinition<?> specDefinition;
@@ -160,6 +161,18 @@ public abstract class AbstractMicronautExtension<C> implements TestExecutionList
      */
     protected void beforeClass(C context, Class<?> testClass, @Nullable MicronautTestValue testAnnotationValue) {
         if (testAnnotationValue != null) {
+            DirtiesContext dc = testClass.getAnnotation(DirtiesContext.class);
+            boolean clearBefore = Optional.ofNullable(dc)
+                    .map(DirtiesContext::timing)
+                    .map(DirtiesContext.Timing::before)
+                    .orElse(false);
+
+            if (clearBefore) {
+                clearContext();
+            } else if (applicationContext != null) {
+                return;
+            }
+
             Class<? extends ApplicationContextBuilder>[] cb = testAnnotationValue.contextBuilder();
             if (ArrayUtils.isNotEmpty(cb)) {
                 this.builder = InstantiationUtils.instantiate(cb[0]);
@@ -314,8 +327,21 @@ public abstract class AbstractMicronautExtension<C> implements TestExecutionList
      * Executed after the class is complete.
      *
      * @param context the context
+     * @param builtContext test context, from test framework to internal format
      */
-    protected void afterClass(C context) {
+    protected void afterClass(C context, TestContext builtContext) {
+        DirtiesContext dirtiesContext = builtContext.getTestClass().getAnnotation(DirtiesContext.class);
+        if (dirtiesContext == null)
+            return;
+
+        if (!dirtiesContext.timing().after())
+            return;
+
+        // if dirties context is present && should be cleared AFTER, then clear:
+        clearContext();
+    }
+
+    protected void clearContext() {
         stopEmbeddedApplication();
         if (applicationContext != null && applicationContext.isRunning()) {
             applicationContext.stop();
