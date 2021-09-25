@@ -18,6 +18,7 @@ package io.micronaut.test.extensions;
 import io.micronaut.context.ApplicationContext;
 import io.micronaut.context.ApplicationContextBuilder;
 import io.micronaut.context.annotation.Property;
+import io.micronaut.context.env.Environment;
 import io.micronaut.context.env.PropertySource;
 import io.micronaut.context.env.PropertySourceLoader;
 import io.micronaut.core.annotation.Nullable;
@@ -169,8 +170,6 @@ public abstract class AbstractMicronautExtension<C> implements TestExecutionList
 
             if (clearBefore) {
                 clearContext();
-            } else if (applicationContext != null) {
-                return;
             }
 
             Class<? extends ApplicationContextBuilder>[] cb = testAnnotationValue.contextBuilder();
@@ -248,7 +247,12 @@ public abstract class AbstractMicronautExtension<C> implements TestExecutionList
             );
             builder.propertySources(testPropertySource);
             postProcessBuilder(builder);
-            this.applicationContext = builder.build();
+
+            if (this.applicationContext == null)
+                this.applicationContext = builder.build();
+            else
+                copyContext(builder.build(), this.applicationContext);
+
             startApplicationContext();
             specDefinition = applicationContext.findBeanDefinition(testClass).orElse(null);
             if (testAnnotationValue.startApplication() && applicationContext.containsBean(EmbeddedApplication.class)) {
@@ -257,6 +261,14 @@ public abstract class AbstractMicronautExtension<C> implements TestExecutionList
             }
             refreshScope = applicationContext.findBean(RefreshScope.class).orElse(null);
         }
+    }
+
+    private void copyContext(ApplicationContext src, ApplicationContext dest) {
+        Environment srcEnv = src.getEnvironment();
+        Environment destEnv = dest.getEnvironment();
+
+        srcEnv.getPropertySources().forEach(destEnv::addPropertySource);
+        srcEnv.getPackages().forEach(destEnv::addPackage);
     }
 
     /**
