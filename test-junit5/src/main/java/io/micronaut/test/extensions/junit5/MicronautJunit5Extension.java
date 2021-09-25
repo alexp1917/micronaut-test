@@ -55,6 +55,11 @@ import java.util.*;
 public class MicronautJunit5Extension extends AbstractMicronautExtension<ExtensionContext> implements BeforeAllCallback, AfterAllCallback, BeforeEachCallback, AfterEachCallback, ExecutionCondition, BeforeTestExecutionCallback, AfterTestExecutionCallback, ParameterResolver, InvocationInterceptor {
     private static final ExtensionContext.Namespace NAMESPACE = ExtensionContext.Namespace.create(MicronautJunit5Extension.class);
 
+    public MicronautJunit5Extension() {
+        MicronautJunitTestListener.micronautListener()
+                .ifPresent(l -> l.addFinishedCallback(this::afterSuite));
+    }
+
     @Override
     public void beforeAll(ExtensionContext extensionContext) throws Exception {
         final Class<?> testClass = extensionContext.getRequiredTestClass();
@@ -104,6 +109,11 @@ public class MicronautJunit5Extension extends AbstractMicronautExtension<Extensi
         if (!extensionContext.getTestClass().filter(this::isNestedTestClass).isPresent()) {
             afterClass(extensionContext);
         }
+    }
+
+    // maybe will be @Override after junit-team/junit5#456
+    public void afterSuite() {
+        System.out.println("we did it");
     }
 
     @Override

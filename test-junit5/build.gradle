@@ -5,6 +5,7 @@ dependencies {
 
     api(
             "org.junit.jupiter:junit-jupiter-api:$junitVersion"
+            ,"org.junit.platform:junit-platform-launcher:$junitPlatformVersion"
     )
 
     testCompileOnly "io.micronaut:micronaut-inject:$micronautVersion"
